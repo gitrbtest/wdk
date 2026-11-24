@@ -167,7 +167,23 @@ The forks and branches:
 - `@tetherto/wdk`: [gitrbtest/wdk, `feature/identity`](https://github.com/gitrbtest/wdk/tree/feature/identity) (its
   `package.json` points at the `wdk-wallet` branch above, for this proposal only)
 - The Concordium implementation and demo: [gitrbtest/tether-wdk-concordium, `p2/21-wdk-identity`](https://github.com/gitrbtest/tether-wdk-concordium/tree/p2/21-wdk-identity),
-  in `identity/` (`npm install`, then `npm run example:wdk-identity`; the test provider shows a form with made-up details)
+  in `identity/`
+
+To run the demo on testnet (Node.js 22; the repository's root holds the Concordium wallet module, which the demo uses
+too, so both folders need installing):
+
+```bash
+git clone https://github.com/gitrbtest/tether-wdk-concordium.git
+cd tether-wdk-concordium
+git checkout p2/21-wdk-identity
+npm install                      # the Concordium wallet module (repository root)
+cd identity
+npm install                      # the identity package, with these WDK forks
+npm run example:wdk-identity     # OPEN_BROWSER=1 opens the provider's page for you
+```
+
+Concordium's test provider shows a form with made-up details: keep them and press Submit. The demo writes to testnet:
+an identity and an account (free), and the shop's question (a small testnet fee, paid by a sponsor account).
 
 ## Open questions for the WDK team
 
