@@ -76,6 +76,9 @@ Transaction policies are no longer part of core. They live in [`@tetherto/wdk-po
 
 ## Identity
 
+> **A proposal:** not part of WDK unless the WDK team accepts it. The problem, the design and its choices, and the open
+> questions are in [docs/proposals/identity.md](docs/proposals/identity.md).
+
 On some chains an account only exists once a verified identity stands behind it, and the identity comes first. An identity manager sits next to the chain's wallet and receives the same seed; an identity protocol proves facts to websites from an account, and receives the chain's identity manager:
 
 ```javascript
