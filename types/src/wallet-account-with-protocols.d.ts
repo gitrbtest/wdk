@@ -2,7 +2,7 @@
  * Interface for wallet accounts that also expose the WDK's protocol-getter
  * helpers (`registerProtocol`, `getSwapProtocol`, `getBridgeProtocol`,
  * `getLendingProtocol`, `getFiatProtocol`, `getSwidgeProtocol`,
- * `getSdaProtocol`). The concrete shape is materialized at runtime by
+ * `getSdaProtocol`, `getIdentityProtocol`). The concrete shape is materialized at runtime by
  * `wdk.getAccount` / `getAccountByPath` after middlewares and protocol getters
  * have been installed. See `WdkAccount` for the consumer-facing type that pairs
  * this surface with the underlying `IWalletAccount` shape.
@@ -71,6 +71,15 @@ export class IWalletAccountWithProtocols {
      * @throws {Error} If no SDA protocol has been registered on this account with the given label.
      */
     getSdaProtocol(label: string): ISdaProtocol;
+    /**
+     * Returns the identity protocol with the given label (registered with `registerIdentityProtocol`), given the
+     * blockchain's identity manager.
+     *
+     * @param {string} label - The label.
+     * @returns {IIdentityProtocol} The identity protocol.
+     * @throws {Error} If no identity protocol has been registered for this account's blockchain with the given label.
+     */
+    getIdentityProtocol(label: string): IIdentityProtocol;
 }
 export type ISwapProtocol = import("@tetherto/wdk-wallet/protocols").ISwapProtocol;
 export type IBridgeProtocol = import("@tetherto/wdk-wallet/protocols").IBridgeProtocol;
@@ -78,12 +87,20 @@ export type ILendingProtocol = import("@tetherto/wdk-wallet/protocols").ILending
 export type IFiatProtocol = import("@tetherto/wdk-wallet/protocols").IFiatProtocol;
 export type ISwidgeProtocol = import("@tetherto/wdk-wallet/protocols").ISwidgeProtocol;
 export type ISdaProtocol = import("@tetherto/wdk-wallet/protocols").ISdaProtocol;
+export type IIdentityProtocol = import("@tetherto/wdk-wallet/protocols").IIdentityProtocol;
 export type SwapProtocol = import("@tetherto/wdk-wallet/protocols").SwapProtocol;
 export type BridgeProtocol = import("@tetherto/wdk-wallet/protocols").BridgeProtocol;
 export type LendingProtocol = import("@tetherto/wdk-wallet/protocols").LendingProtocol;
 export type FiatProtocol = import("@tetherto/wdk-wallet/protocols").FiatProtocol;
 export type SwidgeProtocol = import("@tetherto/wdk-wallet/protocols").SwidgeProtocol;
 export type SdaProtocol = import("@tetherto/wdk-wallet/protocols").SdaProtocol;
+export type IdentityProtocol = import("@tetherto/wdk-wallet/protocols").IdentityProtocol;
+export type IIdentityManager = import("@tetherto/wdk-wallet/identity").IIdentityManager;
 export type Protocol = SwapProtocol | BridgeProtocol | LendingProtocol | FiatProtocol | SwidgeProtocol | SdaProtocol;
+/**
+ * An identity protocol's class (registered with `registerIdentityProtocol`): besides the account, the WDK passes it the
+ * blockchain's identity manager (registered with `registerIdentity`), which holds the account's identity.
+ */
+export type IdentityProtocolConstructor<A extends any[]> = new (account: IWalletAccount, identityManager: IIdentityManager | undefined, ...config: A) => IdentityProtocol;
 export type ProtocolConstructor<A extends any[]> = new (account: IWalletAccount, ...config: A) => Protocol;
-import { IWalletAccount } from "@tetherto/wdk-wallet";
+import { IWalletAccount } from '@tetherto/wdk-wallet';

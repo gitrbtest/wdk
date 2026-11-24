@@ -29,6 +29,11 @@
  * @typedef {import('./src/wallet-account-with-protocols.js').ProtocolConstructor<A>} ProtocolConstructor
  */
 
+/**
+ * @template {any[]} A
+ * @typedef {import('./src/wallet-account-with-protocols.js').IdentityProtocolConstructor<A>} IdentityProtocolConstructor
+ */
+
 /** @typedef {import('./src/wdk.js').WdkAccount} WdkAccount */
 
 export { default } from './src/wdk.js'

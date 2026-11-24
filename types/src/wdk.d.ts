@@ -25,6 +25,8 @@ export default class WDK {
     /** @private */
     private _wallets;
     /** @private */
+    private _identities;
+    /** @private */
     private _protocols;
     /** @private */
     private _middlewares;
@@ -44,6 +46,29 @@ export default class WDK {
      */
     registerWallet<W extends typeof WalletManager>(blockchain: string, WalletManager: W, config: ConstructorParameters<W>[1]): WDK;
     /**
+     * Registers a new identity manager to the WDK.
+     *
+     * An identity manager sits next to the blockchain's wallet and receives the same seed: it verifies the user's
+     * identity with an identity provider, creates accounts from it, and finds both again from the seed. The blockchain's
+     * identity protocols (see {@link registerIdentityProtocol}) receive it, to prove facts from an account.
+     *
+     * @template {typeof IdentityManager} I
+     * @param {string} blockchain - The name of the blockchain the identity manager must be bound to. Can be any string (e.g., "concordium").
+     * @param {I} IdentityManager - The identity manager class.
+     * @param {ConstructorParameters<I>[1]} config - The configuration object.
+     * @returns {WDK} The WDK.
+     * @throws {Error} If an identity manager is already registered for the given blockchain.
+     */
+    registerIdentity<I extends typeof IdentityManager>(blockchain: string, IdentityManager: I, config: ConstructorParameters<I>[1]): WDK;
+    /**
+     * Returns the identity manager registered for a specific blockchain.
+     *
+     * @param {string} blockchain - The name of the blockchain (e.g., "concordium").
+     * @returns {IIdentityManager} The identity manager.
+     * @throws {Error} If no identity manager has been registered for the given blockchain.
+     */
+    getIdentity(blockchain: string): IIdentityManager;
+    /**
      * Registers a new protocol to the WDK.
      *
      * The label must be unique in the scope of the blockchain and the type of protocol (i.e., there can't be two protocols of the
@@ -58,6 +83,22 @@ export default class WDK {
      * @returns {WDK} The WDK.
      */
     registerProtocol<A extends any[]>(blockchain: string, label: string, Protocol: ProtocolConstructor<A>, ...config: NoInfer<A>): WDK;
+    /**
+     * Registers a new identity protocol to the WDK: proving facts to websites from an account. Each identity protocol the
+     * WDK builds for an account also receives the blockchain's identity manager (see {@link registerIdentity}), which
+     * holds the account's identity.
+     *
+     * The label must be unique in the scope of the blockchain.
+     *
+     * @template {any[]} A
+     * @param {string} blockchain - The name of the blockchain the protocol must be bound to. Can be any string (e.g., "concordium").
+     * @param {string} label - The label.
+     * @param {IdentityProtocolConstructor<A>} Protocol - The identity protocol class.
+     * @param {NoInfer<A>} config - The protocol configuration.
+     * @returns {WDK} The WDK.
+     * @throws {Error} If the class is not an identity protocol.
+     */
+    registerIdentityProtocol<A extends any[]>(blockchain: string, label: string, Protocol: IdentityProtocolConstructor<A>, ...config: NoInfer<A>): WDK;
     /**
      * Registers a new middleware to the WDK.
      *
@@ -97,11 +138,11 @@ export default class WDK {
      */
     getFeeRates(blockchain: string): Promise<FeeRates>;
     /**
-     * Disposes and unregisters wallets, calling each wallet's `dispose` method (the wallet module documents what it
-     * clears). The WDK keeps its seed, so wallets can be registered again after disposal. A seed phrase passed as a
+     * Disposes and unregisters wallets and identity managers, calling each one's `dispose` method (the module documents
+     * what it clears). The WDK keeps its seed, so they can be registered again after disposal. A seed phrase passed as a
      * string cannot be wiped: it stays in memory until it is garbage collected.
-     * If no blockchains are specified, all registered wallets are disposed.
-     * @param {string[]} [blockchains] - The blockchains to dispose. If omitted, all wallets are disposed.
+     * If no blockchains are specified, all registered wallets and identity managers are disposed.
+     * @param {string[]} [blockchains] - The blockchains to dispose. If omitted, all wallets and identity managers are disposed.
      */
     dispose(blockchains?: string[]): void;
     /** @private */
@@ -113,6 +154,8 @@ export default class WDK {
 }
 export type IWalletAccount = import("@tetherto/wdk-wallet").IWalletAccount;
 export type FeeRates = import("@tetherto/wdk-wallet").FeeRates;
+export type IIdentityManager = import("@tetherto/wdk-wallet/identity").IIdentityManager;
+export type IdentityProtocolConstructor<A extends any[]> = import("./wallet-account-with-protocols.js").IdentityProtocolConstructor<A>;
 export type IWalletAccountWithProtocols = import("./wallet-account-with-protocols.js").IWalletAccountWithProtocols;
 export type ProtocolConstructor<A extends any[]> = import("./wallet-account-with-protocols.js").ProtocolConstructor<A>;
 /**
@@ -146,6 +189,7 @@ export type MiddlewareContext = {
  */
 export type MiddlewareFunction = <A extends IWalletAccount>(account: A, context: MiddlewareContext) => Promise<IWalletAccount | void>;
 import WalletManager from '@tetherto/wdk-wallet';
+import IdentityManager from '@tetherto/wdk-wallet/identity';
 import { SwapProtocol } from '@tetherto/wdk-wallet/protocols';
 import { BridgeProtocol } from '@tetherto/wdk-wallet/protocols';
 import { LendingProtocol } from '@tetherto/wdk-wallet/protocols';

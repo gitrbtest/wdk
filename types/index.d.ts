@@ -7,4 +7,5 @@ export type MiddlewareContext = import("./src/wdk.js").MiddlewareContext;
 export type IWalletAccountWithProtocols = import("./src/wallet-account-with-protocols.js").IWalletAccountWithProtocols;
 export type Protocol = import("./src/wallet-account-with-protocols.js").Protocol;
 export type ProtocolConstructor<A extends any[]> = import("./src/wallet-account-with-protocols.js").ProtocolConstructor<A>;
+export type IdentityProtocolConstructor<A extends any[]> = import("./src/wallet-account-with-protocols.js").IdentityProtocolConstructor<A>;
 export type WdkAccount = import("./src/wdk.js").WdkAccount;

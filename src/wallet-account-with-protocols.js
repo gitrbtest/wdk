@@ -22,6 +22,7 @@ import { IWalletAccount, NotImplementedError } from '@tetherto/wdk-wallet'
 /** @typedef {import('@tetherto/wdk-wallet/protocols').IFiatProtocol} IFiatProtocol */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').ISwidgeProtocol} ISwidgeProtocol */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').ISdaProtocol} ISdaProtocol */
+/** @typedef {import('@tetherto/wdk-wallet/protocols').IIdentityProtocol} IIdentityProtocol */
 
 /** @typedef {import('@tetherto/wdk-wallet/protocols').SwapProtocol} SwapProtocol */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').BridgeProtocol} BridgeProtocol */
@@ -29,8 +30,19 @@ import { IWalletAccount, NotImplementedError } from '@tetherto/wdk-wallet'
 /** @typedef {import('@tetherto/wdk-wallet/protocols').FiatProtocol} FiatProtocol */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').SwidgeProtocol} SwidgeProtocol */
 /** @typedef {import('@tetherto/wdk-wallet/protocols').SdaProtocol} SdaProtocol */
+/** @typedef {import('@tetherto/wdk-wallet/protocols').IdentityProtocol} IdentityProtocol */
+
+/** @typedef {import('@tetherto/wdk-wallet/identity').IIdentityManager} IIdentityManager */
 
 /** @typedef {SwapProtocol | BridgeProtocol | LendingProtocol | FiatProtocol | SwidgeProtocol | SdaProtocol} Protocol */
+
+/**
+ * An identity protocol's class (registered with `registerIdentityProtocol`): besides the account, the WDK passes it the
+ * blockchain's identity manager (registered with `registerIdentity`), which holds the account's identity.
+ *
+ * @template {any[]} A
+ * @typedef {new (account: IWalletAccount, identityManager: IIdentityManager | undefined, ...config: A) => IdentityProtocol} IdentityProtocolConstructor
+ */
 
 /**
  * @template {any[]} A
@@ -41,7 +53,7 @@ import { IWalletAccount, NotImplementedError } from '@tetherto/wdk-wallet'
  * Interface for wallet accounts that also expose the WDK's protocol-getter
  * helpers (`registerProtocol`, `getSwapProtocol`, `getBridgeProtocol`,
  * `getLendingProtocol`, `getFiatProtocol`, `getSwidgeProtocol`,
- * `getSdaProtocol`). The concrete shape is materialized at runtime by
+ * `getSdaProtocol`, `getIdentityProtocol`). The concrete shape is materialized at runtime by
  * `wdk.getAccount` / `getAccountByPath` after middlewares and protocol getters
  * have been installed. See `WdkAccount` for the consumer-facing type that pairs
  * this surface with the underlying `IWalletAccount` shape.
@@ -129,5 +141,17 @@ export class IWalletAccountWithProtocols extends IWalletAccount {
    */
   getSdaProtocol (label) {
     throw new NotImplementedError('getSdaProtocol(label)')
+  }
+
+  /**
+   * Returns the identity protocol with the given label (registered with `registerIdentityProtocol`), given the
+   * blockchain's identity manager.
+   *
+   * @param {string} label - The label.
+   * @returns {IIdentityProtocol} The identity protocol.
+   * @throws {Error} If no identity protocol has been registered for this account's blockchain with the given label.
+   */
+  getIdentityProtocol (label) {
+    throw new NotImplementedError('getIdentityProtocol(label)')
   }
 }

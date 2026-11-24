@@ -16,9 +16,12 @@
 
 import WalletManager from '@tetherto/wdk-wallet'
 
-import { SwapProtocol, BridgeProtocol, LendingProtocol, FiatProtocol, SwidgeProtocol, SdaProtocol } from '@tetherto/wdk-wallet/protocols'
+import { SwapProtocol, BridgeProtocol, LendingProtocol, FiatProtocol, SwidgeProtocol, SdaProtocol, IdentityProtocol } from '@tetherto/wdk-wallet/protocols'
 
 /** @typedef {import('@tetherto/wdk-wallet').IWalletAccount} IWalletAccount */
+
+/** @typedef {import('@tetherto/wdk-wallet/identity').default} IdentityManager */
+/** @typedef {import('@tetherto/wdk-wallet/identity').IIdentityManager} IIdentityManager */
 
 /** @typedef {import('@tetherto/wdk-wallet').FeeRates} FeeRates */
 
@@ -27,6 +30,11 @@ import { SwapProtocol, BridgeProtocol, LendingProtocol, FiatProtocol, SwidgeProt
 /**
  * @template {any[]} A
  * @typedef {import('./wallet-account-with-protocols.js').ProtocolConstructor<A>} ProtocolConstructor
+ */
+
+/**
+ * @template {any[]} A
+ * @typedef {import('./wallet-account-with-protocols.js').IdentityProtocolConstructor<A>} IdentityProtocolConstructor
  */
 
 /**
@@ -74,7 +82,10 @@ export default class WDK {
     this._wallets = new Map()
 
     /** @private */
-    this._protocols = { swap: Object.create(null), bridge: Object.create(null), lending: Object.create(null), fiat: Object.create(null), swidge: Object.create(null), sda: Object.create(null) }
+    this._identities = new Map()
+
+    /** @private */
+    this._protocols = { swap: Object.create(null), bridge: Object.create(null), lending: Object.create(null), fiat: Object.create(null), swidge: Object.create(null), sda: Object.create(null), identity: Object.create(null) }
 
     /** @private */
     this._middlewares = Object.create(null)
@@ -133,6 +144,47 @@ export default class WDK {
   }
 
   /**
+   * Registers a new identity manager to the WDK.
+   *
+   * An identity manager sits next to the blockchain's wallet and receives the same seed: it verifies the user's
+   * identity with an identity provider, creates accounts from it, and finds both again from the seed. The blockchain's
+   * identity protocols (see {@link registerIdentityProtocol}) receive it, to prove facts from an account.
+   *
+   * @template {typeof IdentityManager} I
+   * @param {string} blockchain - The name of the blockchain the identity manager must be bound to. Can be any string (e.g., "concordium").
+   * @param {I} IdentityManager - The identity manager class.
+   * @param {ConstructorParameters<I>[1]} config - The configuration object.
+   * @returns {WDK} The WDK.
+   * @throws {Error} If an identity manager is already registered for the given blockchain.
+   */
+  registerIdentity (blockchain, IdentityManager, config) {
+    if (this._identities.has(blockchain)) {
+      throw new Error(`An identity manager is already registered for blockchain: ${blockchain}. Call dispose([${JSON.stringify(blockchain)}]) before re-registering.`)
+    }
+
+    const identityManager = new IdentityManager(this._seed, config)
+
+    this._identities.set(blockchain, identityManager)
+
+    return this
+  }
+
+  /**
+   * Returns the identity manager registered for a specific blockchain.
+   *
+   * @param {string} blockchain - The name of the blockchain (e.g., "concordium").
+   * @returns {IIdentityManager} The identity manager.
+   * @throws {Error} If no identity manager has been registered for the given blockchain.
+   */
+  getIdentity (blockchain) {
+    if (!this._identities.has(blockchain)) {
+      throw new Error(`No identity manager registered for blockchain: ${blockchain}.`)
+    }
+
+    return this._identities.get(blockchain)
+  }
+
+  /**
    * Registers a new protocol to the WDK.
    *
    * The label must be unique in the scope of the blockchain and the type of protocol (i.e., there can't be two protocols of the
@@ -172,6 +224,33 @@ export default class WDK {
 
       this._protocols.fiat[blockchain][label] = { Protocol, config }
     }
+
+    return this
+  }
+
+  /**
+   * Registers a new identity protocol to the WDK: proving facts to websites from an account. Each identity protocol the
+   * WDK builds for an account also receives the blockchain's identity manager (see {@link registerIdentity}), which
+   * holds the account's identity.
+   *
+   * The label must be unique in the scope of the blockchain.
+   *
+   * @template {any[]} A
+   * @param {string} blockchain - The name of the blockchain the protocol must be bound to. Can be any string (e.g., "concordium").
+   * @param {string} label - The label.
+   * @param {IdentityProtocolConstructor<A>} Protocol - The identity protocol class.
+   * @param {NoInfer<A>} config - The protocol configuration.
+   * @returns {WDK} The WDK.
+   * @throws {Error} If the class is not an identity protocol.
+   */
+  registerIdentityProtocol (blockchain, label, Protocol, ...config) {
+    if (!(Protocol.prototype instanceof IdentityProtocol)) {
+      throw new Error('The protocol must extend IdentityProtocol.')
+    }
+
+    this._protocols.identity[blockchain] ??= Object.create(null)
+
+    this._protocols.identity[blockchain][label] = { Protocol, config }
 
     return this
   }
@@ -259,17 +338,24 @@ export default class WDK {
   }
 
   /**
-   * Disposes and unregisters wallets, calling each wallet's `dispose` method (the wallet module documents what it
-   * clears). The WDK keeps its seed, so wallets can be registered again after disposal. A seed phrase passed as a
+   * Disposes and unregisters wallets and identity managers, calling each one's `dispose` method (the module documents
+   * what it clears). The WDK keeps its seed, so they can be registered again after disposal. A seed phrase passed as a
    * string cannot be wiped: it stays in memory until it is garbage collected.
-   * If no blockchains are specified, all registered wallets are disposed.
-   * @param {string[]} [blockchains] - The blockchains to dispose. If omitted, all wallets are disposed.
+   * If no blockchains are specified, all registered wallets and identity managers are disposed.
+   * @param {string[]} [blockchains] - The blockchains to dispose. If omitted, all wallets and identity managers are disposed.
    */
   dispose (blockchains) {
     for (const [blockchain, wallet] of this._wallets) {
       if (!blockchains || blockchains.includes(blockchain)) {
         wallet.dispose()
         this._wallets.delete(blockchain)
+      }
+    }
+
+    for (const [blockchain, identityManager] of this._identities) {
+      if (!blockchains || blockchains.includes(blockchain)) {
+        identityManager.dispose()
+        this._identities.delete(blockchain)
       }
     }
   }
@@ -344,5 +430,13 @@ export default class WDK {
     account.getFiatProtocol = (label) => account._buildProtocol('fiat', label)
     account.getSwidgeProtocol = (label) => account._buildProtocol('swidge', label)
     account.getSdaProtocol = (label) => account._buildProtocol('sda', label)
+    // An identity protocol also receives the blockchain's identity manager, which holds the account's identity.
+    account.getIdentityProtocol = (label) => {
+      const global = this._protocols.identity[blockchain]?.[label]
+
+      if (!global) throw new Error(`No identity protocol registered for label: ${label}.`)
+
+      return new global.Protocol(account, this._identities.get(blockchain), ...global.config)
+    }
   }
 }

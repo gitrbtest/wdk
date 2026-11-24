@@ -56,6 +56,7 @@ wdk.dispose()
 - **Unified Account Access**: Retrieve accounts by chain, index, or derivation path through a consistent API
 - **Multi-Chain Operations**: Coordinate balances, fee lookups, and transaction flows across registered chains
 - **Protocol Registration Support**: Attach swap, bridge, lending, fiat, and swidge protocols to registered blockchains
+- **Identity**: Register a chain's identity manager to verify the user's identity, create accounts from it, and prove facts to websites
 - **Middleware Hooks**: Intercept account derivation with custom middleware
 - **Seed Utilities**: Generate and validate BIP-39 seed phrases
 - **Selective Disposal**: Dispose specific registered wallets or all of them
@@ -72,6 +73,27 @@ wdk.registerMiddleware('ethereum', async (account, { index }) => {
 ```
 
 Transaction policies are no longer part of core. They live in [`@tetherto/wdk-policies`](https://github.com/tetherto/wdk-policies), an opt-in package that installs itself through this hook.
+
+## Identity
+
+On some chains an account only exists once a verified identity stands behind it, and the identity comes first. An identity manager sits next to the chain's wallet and receives the same seed; an identity protocol proves facts to websites from an account, and receives the chain's identity manager:
+
+```javascript
+wdk.registerWallet('concordium', WalletManagerConcordium, walletConfig)
+  .registerIdentity('concordium', ConcordiumIdentityManager, identityConfig)
+  .registerIdentityProtocol('concordium', 'concordium-id', ConcordiumIdentityProtocol)
+
+const identity = wdk.getIdentity('concordium')
+const { url, identity: pending } = await identity.startVerification({ provider, returnUrl })
+// … the user verifies on the provider's page …
+await identity.completeVerification(pending, reply)
+const { path } = await identity.createAccount(pending)
+
+const account = await wdk.getAccountByPath('concordium', path)
+const proof = await account.getIdentityProtocol('concordium-id').prove(request)
+```
+
+The base classes, `IdentityManager` and `IdentityProtocol`, are in `@tetherto/wdk-wallet`.
 
 ## Compatibility
 
