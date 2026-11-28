@@ -83,8 +83,8 @@ On some chains an account only exists once a verified identity stands behind it,
 
 ```javascript
 wdk.registerWallet('concordium', WalletManagerConcordium, walletConfig)
-  .registerIdentity('concordium', ConcordiumIdentityManager, identityConfig)
-  .registerIdentityProtocol('concordium', 'concordium-id', ConcordiumIdentityProtocol)
+  .registerIdentity('concordium', IdentityManagerConcordium, identityConfig)
+  .registerIdentityProtocol('concordium', 'concordium-id', IdentityProtocolConcordium)
 
 const identity = wdk.getIdentity('concordium')
 const { url, identity: pending } = await identity.startVerification({ provider, returnUrl })

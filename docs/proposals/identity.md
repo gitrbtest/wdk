@@ -51,8 +51,8 @@ import WDK from '@tetherto/wdk'
 
 const wdk = new WDK(seedPhrase)
   .registerWallet('concordium', WalletManagerConcordium, walletConfig)
-  .registerIdentity('concordium', ConcordiumIdentityManager, identityConfig)            // built with WDK's seed
-  .registerIdentityProtocol('concordium', 'concordium-id', ConcordiumIdentityProtocol)
+  .registerIdentity('concordium', IdentityManagerConcordium, identityConfig)            // built with WDK's seed
+  .registerIdentityProtocol('concordium', 'concordium-id', IdentityProtocolConcordium)
 
 // Wallet level: no account needed
 const identities = wdk.getIdentity('concordium')
@@ -75,7 +75,8 @@ wdk.dispose()   // disposes the identity managers too
 
 ## Changes in `@tetherto/wdk-wallet`
 
-A new entry, `@tetherto/wdk-wallet/identity`, and one new protocol base class. Both follow the existing pattern: an
+A new entry, `@tetherto/wdk-wallet/identity` (an entry of its own, as `./protocols` and `./multisig` are), and one
+new protocol base class. Both follow the existing pattern: an
 interface (`IIdentityManager`, `IIdentityProtocol`) and an abstract base class, documented with JSDoc; in the type
 declarations the classes are `abstract` and the interfaces are `interface`, as for the existing protocols.
 
@@ -147,11 +148,12 @@ WDK's existing tests pass unchanged.
 
 ## A first implementation: Concordium
 
-The Concordium identity package implements both classes in its `/wdk` entry (`ConcordiumIdentityManager`,
-`ConcordiumIdentityProtocol`), on top of its existing functions (identity verification, account creation, recovery,
-proofs).
+The Concordium identity module (`@concordium/wdk-identity-concordium`) is built as a WDK module for these classes, the
+way Tether's modules are built for theirs: `IdentityManagerConcordium` (extends `IdentityManager`) and
+`IdentityProtocolConcordium` (extends `IdentityProtocol`) are its main exports and do the work themselves, and its
+errors extend `IdentityError`.
 
-- **Tests:** `@tetherto/wdk-wallet` 25 new tests (57 in all); `@tetherto/wdk` 18 new tests (74 in all); the
+- **Tests:** `@tetherto/wdk-wallet` 25 new tests (66 in all); `@tetherto/wdk` 18 new tests (74 in all); the
   Concordium implementation 18 tests through this WDK, including a proof checked with Concordium's own verifier and
   recovery on a new device. TypeScript apps using the new API compile, and TypeScript catches a missing method or a
   wrong setting.
@@ -166,7 +168,7 @@ The forks and branches:
 - `@tetherto/wdk-wallet`: [gitrbtest/wdk-wallet, `feature/identity`](https://github.com/gitrbtest/wdk-wallet/tree/feature/identity)
 - `@tetherto/wdk`: [gitrbtest/wdk, `feature/identity`](https://github.com/gitrbtest/wdk/tree/feature/identity) (its
   `package.json` points at the `wdk-wallet` branch above, for this proposal only)
-- The Concordium implementation and demo: [gitrbtest/tether-wdk-concordium, `p2/21-wdk-identity`](https://github.com/gitrbtest/tether-wdk-concordium/tree/p2/21-wdk-identity),
+- The Concordium implementation and demo: [gitrbtest/tether-wdk-concordium, `p2/22-wdk-first`](https://github.com/gitrbtest/tether-wdk-concordium/tree/p2/22-wdk-first),
   in `identity/`
 
 To run the demo on testnet (Node.js 22; the repository's root holds the Concordium wallet module, which the demo uses
@@ -175,14 +177,15 @@ too, so both folders need installing):
 ```bash
 git clone https://github.com/gitrbtest/tether-wdk-concordium.git
 cd tether-wdk-concordium
-git checkout p2/21-wdk-identity
+git checkout p2/22-wdk-first
 npm install                      # the Concordium wallet module (repository root)
 cd identity
 npm install                      # the identity package, with these WDK forks
 npm run example:wdk-identity     # OPEN_BROWSER=1 opens the provider's page for you
 ```
 
-Concordium's test provider shows a form with made-up details: keep them and press Submit. The demo writes to testnet:
+Concordium's test provider shows a form that starts empty: press **Fill random test values** (made-up details; check
+the date of birth is over 18, press again if not), then **Create test identity**. The demo writes to testnet:
 an identity and an account (free), and the shop's question (a small testnet fee, paid by a sponsor account).
 
 ## Open questions for the WDK team
@@ -193,3 +196,9 @@ an identity and an account (free), and the shop's question (a small testnet fee,
 3. Passing the identity manager to identity protocols: acceptable, or would you prefer another way to reach it?
 4. Should `describeRequest` (the consent wording) live in the protocol, or is consent the wallet app's job alone?
 5. Should identity protocols also be registrable per account, like the other protocols?
+6. Signers: `WalletManager` can be built from a signer instead of a seed. An identity manager needs the seed itself
+   (on Concordium, the identity's secret values are worked out from it, not signed with it), so the proposal takes a
+   seed only. Should an identity manager refuse a signer explicitly, or is there a signer-based design you prefer?
+7. Transaction policies (`@tetherto/wdk-policies`) govern the accounts WDK hands out, through the middleware hook.
+   The identity manager is not an account, so creating accounts and proving from the identity are not governed, and
+   `getIdentityProtocol` is new to the policy engine. Should identity operations be governable by policies?
